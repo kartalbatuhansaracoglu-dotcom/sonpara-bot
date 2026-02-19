@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SonParaBot</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080808;
+  --bg2: #0f0f0f;
+  --bg3: #161616;
+  --green: #00e87a;
+  --red: #ff2d55;
+  --yellow: #ffd60a;
+  --orange: #ff6b1a;
+  --blue: #0a84ff;
+  --text: #f0f0f0;
+  --dim: #444;
+  --dim2: #2a2a2a;
+}
+
+- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘IBM Plex Mono’, monospace;
+font-size: 13px;
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+/* SCANLINES */
+body::after {
+content: ‘’;
+position: fixed;
+inset: 0;
+background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+pointer-events: none;
+z-index: 9999;
+}
+
+/* HEADER */
+header {
+position: sticky; top: 0; z-index: 200;
+background: rgba(8,8,8,0.96);
+backdrop-filter: blur(10px);
+border-bottom: 1px solid #1a1a1a;
+padding: 10px 14px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+.logo {
+font-family: ‘Bebas Neue’;
+font-size: 20px;
+letter-spacing: 3px;
+color: var(–yellow);
+}
+.logo em { color: var(–red); font-style: normal; }
+
+.hdr-right { display: flex; align-items: center; gap: 8px; }
+
+.dot {
+width: 7px; height: 7px;
+border-radius: 50%;
+background: var(–dim);
+transition: all 0.3s;
+}
+.dot.on { background: var(–green); box-shadow: 0 0 8px var(–green); animation: blink 2s infinite; }
+.dot.err { background: var(–red); box-shadow: 0 0 8px var(–red); }
+
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.4} }
+
+.net-badge {
+font-size: 9px; font-weight: 700; letter-spacing: 1px;
+padding: 2px 7px; border-radius: 10px;
+border: 1px solid var(–dim2);
+color: var(–dim);
+}
+.net-badge.testnet { border-color: rgba(255,107,26,.4); color: var(–orange); }
+.net-badge.live { border-color: rgba(255,45,85,.4); color: var(–red); }
+
+/* PAGES */
+.page { display: none; padding: 12px 14px; max-width: 480px; margin: 0 auto; padding-bottom: 80px; }
+.page.active { display: block; }
+
+/* TOAST */
+#toast {
+position: fixed; top: 64px; left: 50%;
+transform: translateX(-50%) translateY(-8px);
+background: #1c1c1c;
+font-size: 12px; padding: 8px 18px; border-radius: 20px;
+opacity: 0; transition: all .25s; z-index: 9998;
+white-space: nowrap; max-width: 90vw;
+}
+#toast.ok  { border: 1px solid var(–green); color: var(–green); }
+#toast.err { border: 1px solid var(–red); color: var(–red); }
+#toast.info{ border: 1px solid var(–yellow); color: var(–yellow); }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* CARDS */
+.card {
+background: var(–bg2);
+border: 1px solid #1c1c1c;
+border-radius: 12px;
+margin-bottom: 10px;
+}
+
+.card-hdr {
+padding: 10px 14px;
+border-bottom: 1px solid #191919;
+font-size: 10px; color: var(–dim); text-transform: uppercase; letter-spacing: 1.5px;
+display: flex; justify-content: space-between; align-items: center;
+}
+
+.card-body { padding: 14px; }
+
+/* BALANCE */
+.balance-num {
+font-family: ‘Bebas Neue’;
+font-size: 46px;
+line-height: 1;
+letter-spacing: 1px;
+color: var(–yellow);
+transition: color .3s;
+}
+.balance-num.danger { color: var(–red); animation: jitter .4s infinite; }
+@keyframes jitter { 0%,100%{transform:translateX(0)} 33%{transform:translateX(-2px)} 66%{transform:translateX(2px)} }
+
+.pnl-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.pnl { font-size: 12px; }
+.pnl.up { color: var(–green); }
+.pnl.dn { color: var(–red); }
+
+/* RISK BAR */
+.risk-bar { height: 4px; background: var(–bg3); border-radius: 2px; margin: 8px 0; overflow: hidden; }
+.risk-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(–green) 0%, var(–yellow) 50%, var(–orange) 75%, var(–red) 100%); transition: width .5s; }
+
+/* STATS */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.stat { background: var(–bg2); border: 1px solid #1c1c1c; border-radius: 10px; padding: 10px; text-align: center; }
+.stat-v { font-family: ‘Bebas Neue’; font-size: 22px; line-height: 1; }
+.stat-v.g { color: var(–green); }
+.stat-v.r { color: var(–red); }
+.stat-v.y { color: var(–yellow); }
+.stat-l { font-size: 9px; color: var(–dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; }
+
+/* PRICE */
+.price-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
+.price-val { font-family: ‘Bebas Neue’; font-size: 20px; color: var(–text); }
+.price-sub { font-size: 10px; color: var(–dim); }
+
+/* GRID LEVELS */
+.grid-level {
+display: flex; align-items: center; gap: 8px;
+padding: 8px 0; border-bottom: 1px solid #161616;
+}
+.grid-level:last-child { border: none; }
+.gl-badge {
+font-size: 10px; font-family: ‘Bebas Neue’; letter-spacing: 1px;
+padding: 2px 7px; border-radius: 4px; flex-shrink: 0;
+}
+.gl-badge.buy { background: rgba(0,232,122,.1); color: var(–green); border: 1px solid rgba(0,232,122,.3); }
+.gl-badge.sell { background: rgba(255,45,85,.1); color: var(–red); border: 1px solid rgba(255,45,85,.3); }
+.gl-price { flex: 1; font-size: 12px; }
+.gl-status { font-size: 10px; color: var(–dim); }
+
+/* ACTION BUTTONS */
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+.btn {
+padding: 15px;
+border: none; border-radius: 10px;
+font-family: ‘Bebas Neue’; font-size: 18px; letter-spacing: 2px;
+cursor: pointer; transition: all .15s; outline: none;
+position: relative; overflow: hidden;
+}
+
+.btn:active { transform: scale(0.96); }
+
+.btn-go {
+background: #001a0e;
+color: var(–green);
+border: 1px solid rgba(0,232,122,.5);
+}
+.btn-go.running { animation: runPulse 1.5s infinite; }
+@keyframes runPulse { 0%,100%{box-shadow:0 0 8px rgba(0,232,122,.2)} 50%{box-shadow:0 0 20px rgba(0,232,122,.5)} }
+
+.btn-stop {
+background: #1a0007;
+color: var(–red);
+border: 1px solid rgba(255,45,85,.5);
+}
+
+/* TRADES */
+.trade-item {
+display: flex; align-items: center; gap: 10px;
+padding: 10px 14px; border-bottom: 1px solid #141414;
+animation: slideIn .25s ease;
+}
+.trade-item:last-child { border: none; }
+@keyframes slideIn { from{transform:translateX(-15px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+.t-side {
+width: 30px; height: 30px; border-radius: 6px;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Bebas Neue’; font-size: 11px; flex-shrink: 0;
+}
+.t-side.buy { background: rgba(0,232,122,.1); color: var(–green); border: 1px solid rgba(0,232,122,.3); }
+.t-side.sell { background: rgba(255,45,85,.1); color: var(–red); border: 1px solid rgba(255,45,85,.3); }
+
+.t-info { flex: 1; }
+.t-pair { font-size: 12px; font-weight: 700; }
+.t-meta { font-size: 10px; color: var(–dim); margin-top: 2px; }
+
+.t-pnl { text-align: right; }
+.t-amount { font-family: ‘Bebas Neue’; font-size: 15px; }
+.t-amount.pos { color: var(–green); }
+.t-amount.neg { color: var(–red); }
+
+/* LOG */
+.log-body {
+padding: 10px 14px; height: 160px; overflow-y: auto;
+font-family: ‘Share Tech Mono’, monospace; font-size: 11px; line-height: 2;
+}
+.le { display: flex; gap: 8px; }
+.lt { color: var(–dim); flex-shrink: 0; }
+.lm.ok   { color: var(–green); }
+.lm.err  { color: var(–red); }
+.lm.warn { color: var(–yellow); }
+.lm.info { color: #3a9bff; }
+.lm.panic { color: var(–red); animation: blink .4s infinite; }
+
+/* FORM ELEMENTS */
+label { font-size: 10px; color: var(–dim); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+
+input[type=“text”],
+input[type=“password”],
+input[type=“number”],
+select {
+width: 100%;
+background: var(–bg3);
+border: 1px solid #252525;
+border-radius: 7px;
+color: var(–text);
+font-family: ‘IBM Plex Mono’, monospace;
+font-size: 13px;
+padding: 9px 11px;
+outline: none;
+-webkit-appearance: none;
+margin-bottom: 12px;
+}
+input:focus, select:focus { border-color: rgba(255,214,10,.5); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* LEVERAGE SLIDER */
+.lev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.lev-num { font-family: ‘Bebas Neue’; font-size: 26px; color: var(–orange); }
+
+input[type=“range”] {
+width: 100%; -webkit-appearance: none;
+height: 4px; border-radius: 2px; background: #222; outline: none; margin-bottom: 4px;
+}
+input[type=“range”]::-webkit-slider-thumb {
+-webkit-appearance: none;
+width: 18px; height: 18px; border-radius: 50%;
+background: var(–orange);
+box-shadow: 0 0 8px rgba(255,107,26,.7);
+cursor: pointer;
+}
+
+.slider-marks { display: flex; justify-content: space-between; font-size: 9px; color: var(–dim); }
+
+/* TOGGLE */
+.toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #181818; }
+.toggle-row:last-child { border: none; }
+.tl { font-size: 12px; }
+.ts { font-size: 10px; color: var(–dim); margin-top: 2px; }
+.toggle { width: 40px; height: 22px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 11px; position: relative; cursor: pointer; transition: all .3s; flex-shrink: 0; }
+.toggle.on { background: rgba(0,232,122,.15); border-color: var(–green); }
+.toggle::after { content: ‘’; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: #333; top: 3px; left: 3px; transition: all .3s; }
+.toggle.on::after { transform: translateX(18px); background: var(–green); box-shadow: 0 0 6px var(–green); }
+
+/* BOTTOM NAV */
+.bnav {
+position: fixed; bottom: 0; left: 0; right: 0;
+background: rgba(8,8,8,.96); backdrop-filter: blur(10px);
+border-top: 1px solid #181818;
+display: flex; z-index: 200;
+padding-bottom: env(safe-area-inset-bottom);
+}
+.ni { flex: 1; text-align: center; padding: 8px 0; cursor: pointer; transition: all .2s; }
+.ni-icon { font-size: 18px; display: block; }
+.ni-lbl { font-size: 9px; color: var(–dim); display: block; margin-top: 2px; letter-spacing: .5px; text-transform: uppercase; }
+.ni.active .ni-lbl { color: var(–yellow); }
+
+/* SECTION TITLE */
+.sec-title { font-size: 10px; color: var(–dim); text-transform: uppercase; letter-spacing: 1.5px; margin: 14px 0 8px; }
+
+.submit-btn {
+width: 100%;
+padding: 13px;
+background: rgba(255,214,10,.08);
+border: 1px solid rgba(255,214,10,.4);
+border-radius: 8px;
+color: var(–yellow);
+font-family: ‘Bebas Neue’; font-size: 17px; letter-spacing: 2px;
+cursor: pointer; transition: all .2s; margin-top: 4px;
+}
+.submit-btn:active { background: rgba(255,214,10,.15); }
+
+.danger-btn {
+width: 100%;
+padding: 13px;
+background: rgba(255,45,85,.08);
+border: 1px solid rgba(255,45,85,.4);
+border-radius: 8px;
+color: var(–red);
+font-family: ‘Bebas Neue’; font-size: 17px; letter-spacing: 2px;
+cursor: pointer; transition: all .2s; margin-top: 8px;
+}
+
+.conn-status {
+padding: 10px 14px; border-radius: 8px; font-size: 11px;
+display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.conn-status.ok { background: rgba(0,232,122,.06); border: 1px solid rgba(0,232,122,.2); color: var(–green); }
+.conn-status.fail { background: rgba(255,45,85,.06); border: 1px solid rgba(255,45,85,.2); color: var(–red); }
+.conn-status.wait { background: rgba(255,214,10,.06); border: 1px solid rgba(255,214,10,.2); color: var(–yellow); }
+
+.server-url-hint { font-size: 10px; color: var(–dim); margin-bottom: 12px; padding: 8px 10px; background: var(–bg3); border-radius: 6px; }
+</style>
+
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header>
+  <div class="logo">SON<em>PARA</em>BOT</div>
+  <div class="hdr-right">
+    <span class="net-badge" id="netBadge">DEMO</span>
+    <span class="dot" id="statusDot"></span>
+  </div>
+</header>
+
+<!-- ── PAGE: BOT ── -->
+
+<div class="page active" id="page-bot">
+
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-body">
+      <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px">Bakiye (USDT)</div>
+      <div class="balance-num" id="balanceNum">—</div>
+      <div class="pnl-row">
+        <span class="pnl" id="pnlDisplay">—</span>
+        <span style="font-size:10px;color:var(--dim)" id="lastUpdate">—</span>
+      </div>
+      <div class="risk-bar"><div class="risk-fill" id="riskFill" style="width:20%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim)">
+        <span id="symbolDisplay">—</span>
+        <span id="priceDisplay">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-v g" id="winsDisplay">—</div><div class="stat-l">Kazanan</div></div>
+    <div class="stat"><div class="stat-v r" id="lossesDisplay">—</div><div class="stat-l">Kaybeden</div></div>
+    <div class="stat"><div class="stat-v y" id="wrDisplay">—</div><div class="stat-l">Win Rate</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-go" id="startBtn" onclick="handleStart()">BAŞLAT</button>
+    <button class="btn btn-stop" onclick="handleEmergency()">ACİL DUR</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      Grid Seviyeleri
+      <span style="font-size:10px;background:rgba(255,214,10,.08);color:var(--yellow);padding:2px 8px;border-radius:10px;border:1px solid rgba(255,214,10,.2)" id="gridCount">0 emir</span>
+    </div>
+    <div id="gridLevels" style="padding:0 14px;max-height:200px;overflow-y:auto">
+      <div style="padding:14px 0;text-align:center;color:var(--dim);font-size:11px">Bot başlatıldığında grid emirleri burada görünür</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Son İşlemler</div>
+    <div id="tradeList">
+      <div style="padding:14px;text-align:center;color:var(--dim);font-size:11px">Henüz işlem yok</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">Bot Logu</div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+</div>
+
+<!-- ── PAGE: AYARLAR ── -->
+
+<div class="page" id="page-settings">
+
+  <div class="sec-title">Grid Ayarları</div>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-row">
+        <div>
+          <label>Coin</label>
+          <select id="cfg-symbol">
+            <option value="BTCUSDT">BTC/USDT</option>
+            <option value="ETHUSDT">ETH/USDT</option>
+            <option value="SOLUSDT">SOL/USDT</option>
+            <option value="BNBUSDT">BNB/USDT</option>
+            <option value="DOGEUSDT">DOGE/USDT</option>
+          </select>
+        </div>
+        <div>
+          <label>USDT Miktarı</label>
+          <input type="number" id="cfg-usdt" value="100" min="10" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Grid Seviyesi</label>
+          <input type="number" id="cfg-levels" value="5" min="2" max="20" />
+        </div>
+        <div>
+          <label>Aralık (%)</label>
+          <input type="number" id="cfg-spacing" value="0.5" step="0.1" min="0.1" max="5" />
+        </div>
+      </div>
+
+```
+  <div>
+    <div class="lev-header">
+      <label style="margin:0">Kaldıraç</label>
+      <div class="lev-num"><span id="levNum">3</span>x</div>
+    </div>
+    <input type="range" id="cfg-leverage" min="1" max="20" value="3"
+      oninput="document.getElementById('levNum').textContent=this.value" />
+    <div class="slider-marks">
+      <span>1x</span><span>5x</span><span>10x</span><span>15x</span><span>20x</span>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <div class="sec-title">Risk Yönetimi</div>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-row">
+        <div>
+          <label>Stop Loss (%)</label>
+          <input type="number" id="cfg-sl" value="10" min="1" max="90" />
+        </div>
+        <div>
+          <label>Take Profit (%)</label>
+          <input type="number" id="cfg-tp" value="20" min="1" max="500" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+<button class="submit-btn" onclick="saveConfig()">💾 AYARLARI KAYDET</button>
+
+  <div class="sec-title">Sunucu Bağlantısı</div>
+  <div class="conn-status wait" id="connStatus">
+    <span>⚡</span><span id="connText">Bot sunucusuna bağlanılıyor...</span>
+  </div>
+  <div class="server-url-hint" id="serverUrlHint">
+    Sunucu URL: <span id="serverUrlDisplay">—</span><br>
+    <span style="color:var(--dim)">Bu URL Railway'den otomatik alınır</span>
+  </div>
+
+  <div class="sec-title">Binance API (Sunucuda .env dosyasına yaz)</div>
+  <div class="card">
+    <div class="card-body">
+      <div class="toggle-row">
+        <div><div class="tl">Testnet Modu</div><div class="ts">Gerçek para kullanma</div></div>
+        <div class="toggle on" id="testnetToggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div style="padding:10px 0;font-size:11px;color:var(--dim);line-height:1.8">
+        API anahtarları güvenlik için sunucuda .env dosyasına yazılır.<br>
+        Railway → Variables bölümünden ekle:<br>
+        <span style="color:var(--yellow)">BINANCE_API_KEY=...</span><br>
+        <span style="color:var(--yellow)">BINANCE_API_SECRET=...</span><br>
+        <span style="color:var(--yellow)">TESTNET=false</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PAGE: KURULUM ── -->
+
+<div class="page" id="page-setup">
+  <div class="sec-title">🚀 Kurulum Rehberi</div>
+
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-hdr">1. GitHub'a Yükle</div>
+    <div class="card-body" style="font-size:11px;line-height:2;color:#ccc">
+      <div>① github.com → Yeni repo oluştur</div>
+      <div>② bot.py, server.py, index.html, requirements.txt yükle</div>
+      <div>③ Repoyu public yap</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-hdr">2. Railway'e Deploy Et</div>
+    <div class="card-body" style="font-size:11px;line-height:2;color:#ccc">
+      <div>① railway.app → GitHub ile giriş</div>
+      <div>② New Project → Deploy from GitHub</div>
+      <div>③ Repoyu seç → Deploy</div>
+      <div>④ Variables ekle:</div>
+      <div style="background:var(--bg3);padding:8px 10px;border-radius:6px;margin:6px 0;color:var(--yellow)">
+        BINANCE_API_KEY = senin_key<br>
+        BINANCE_API_SECRET = senin_secret<br>
+        TESTNET = true<br>
+        SYMBOL = BTCUSDT
+      </div>
+      <div>⑤ Settings → Domains → Subdomain al</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-hdr">3. Telefona Bağlan</div>
+    <div class="card-body" style="font-size:11px;line-height:2;color:#ccc">
+      <div>① Railway'den aldığın URL'i aşağıya yaz</div>
+      <div>② Bağlan'a bas</div>
+      <div>③ Ayarlar → API key testnetinden al</div>
+      <div>④ Bot → Başlat!</div>
+      <br>
+      <label>Sunucu URL</label>
+      <input type="text" id="serverUrlInput" placeholder="https://sonpara.up.railway.app" />
+      <button class="submit-btn" onclick="setServerUrl()">🔗 BAĞLAN</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">⚠️ Önemli Uyarılar</div>
+    <div class="card-body" style="font-size:11px;line-height:2">
+      <div style="color:var(--red)">• İlk 1-2 hafta mutlaka TESTNET kullan</div>
+      <div style="color:var(--orange)">• Kaldıracı 3x-5x'den fazla çıkarma</div>
+      <div style="color:var(--orange)">• Stop Loss daima aktif olsun</div>
+      <div style="color:var(--yellow)">• Grid trading düşük volatilitede iyi çalışır</div>
+      <div style="color:var(--green)">• Küçük miktarla başla ($50-100)</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+
+<nav class="bnav">
+  <div class="ni active" id="ni-bot" onclick="goPage('bot')">
+    <span class="ni-icon">🤖</span><span class="ni-lbl">Bot</span>
+  </div>
+  <div class="ni" id="ni-settings" onclick="goPage('settings')">
+    <span class="ni-icon">⚙️</span><span class="ni-lbl">Ayarlar</span>
+  </div>
+  <div class="ni" id="ni-setup" onclick="goPage('setup')">
+    <span class="ni-icon">📋</span><span class="ni-lbl">Kurulum</span>
+  </div>
+</nav>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────────
+let SERVER_URL = localStorage.getItem("serverUrl") || "";
+let pollInterval = null;
+let lastLogCount = 0;
+let lastTradeCount = 0;
+let isConnected = false;
+let isRunning = false;
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('ni-' + name).classList.add('active');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type}`;
+  void t.offsetWidth;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ─── SERVER URL ──────────────────────────────────────────────────────────────
+function setServerUrl() {
+  const url = document.getElementById('serverUrlInput').value.trim().replace(/\/$/, '');
+  if (!url.startsWith('http')) { toast('Geçersiz URL!', 'err'); return; }
+  SERVER_URL = url;
+  localStorage.setItem('serverUrl', url);
+  document.getElementById('serverUrlDisplay').textContent = url;
+  document.getElementById('serverUrlInput').value = url;
+  toast('Sunucu URL kaydedildi. Bağlanılıyor...', 'info');
+  startPolling();
+}
+
+// ─── API CALLS ────────────────────────────────────────────────────────────────
+async function apiFetch(path, method = 'GET', body = null) {
+  if (!SERVER_URL) return null;
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(SERVER_URL + path, opts);
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function handleStart() {
+  if (!SERVER_URL) { goPage('setup'); toast('Önce sunucu URL gir!', 'err'); return; }
+  
+  const btn = document.getElementById('startBtn');
+  
+  if (isRunning) {
+    // Durdur
+    const r = await apiFetch('/api/stop', 'POST');
+    if (r?.ok) { toast('Bot durduruldu', 'info'); }
+    else toast('Hata!', 'err');
+  } else {
+    // Başlat - ayarları gönder
+    const cfg = collectConfig();
+    const r = await apiFetch('/api/start', 'POST', cfg);
+    if (r?.ok) { toast('Bot başlatıldı! ✅', 'ok'); }
+    else toast('Başlatma hatası!', 'err');
+  }
+}
+
+async function handleEmergency() {
+  if (!confirm('ACİL DURUŞ! Tüm pozisyonlar kapatılacak. Emin misin?')) return;
+  const r = await apiFetch('/api/emergency', 'POST');
+  if (r?.ok) { toast('🚨 ACİL DURUŞ aktif!', 'err'); }
+  else toast('Sunucu yanıt vermedi', 'err');
+}
+
+function collectConfig() {
+  return {
+    symbol: document.getElementById('cfg-symbol').value,
+    totalUsdt: parseFloat(document.getElementById('cfg-usdt').value),
+    gridLevels: parseInt(document.getElementById('cfg-levels').value),
+    gridSpacing: parseFloat(document.getElementById('cfg-spacing').value),
+    leverage: parseInt(document.getElementById('cfg-leverage').value),
+    stopLoss: parseFloat(document.getElementById('cfg-sl').value),
+    takeProfit: parseFloat(document.getElementById('cfg-tp').value),
+  };
+}
+
+async function saveConfig() {
+  if (!SERVER_URL) { toast('Sunucu bağlı değil', 'err'); return; }
+  const r = await apiFetch('/api/config', 'POST', collectConfig());
+  if (r?.ok) toast('Ayarlar kaydedildi ✅', 'ok');
+  else toast('Kayıt hatası', 'err');
+}
+
+// ─── STATE POLLING ────────────────────────────────────────────────────────────
+async function pollState() {
+  const data = await apiFetch('/api/state');
+  
+  if (!data) {
+    setConnected(false);
+    return;
+  }
+  
+  setConnected(true);
+  renderState(data);
+}
+
+function setConnected(ok) {
+  isConnected = ok;
+  const dot = document.getElementById('statusDot');
+  const connSt = document.getElementById('connStatus');
+  const connTxt = document.getElementById('connText');
+  
+  if (ok) {
+    dot.className = 'dot ' + (isRunning ? 'on' : '');
+    connSt.className = 'conn-status ok';
+    connTxt.textContent = 'Sunucuya bağlandı ✓';
+  } else {
+    dot.className = 'dot err';
+    connSt.className = 'conn-status fail';
+    connTxt.textContent = 'Sunucuya ulaşılamıyor';
+  }
+}
+
+function renderState(s) {
+  isRunning = s.running;
+
+  // Header
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot ' + (s.running ? 'on' : '');
+  
+  const netBadge = document.getElementById('netBadge');
+  if (s.testnet) { netBadge.textContent = 'TESTNET'; netBadge.className = 'net-badge testnet'; }
+  else { netBadge.textContent = 'LIVE'; netBadge.className = 'net-badge live'; }
+
+  // Balance
+  const bal = s.balance || 0;
+  const balEl = document.getElementById('balanceNum');
+  balEl.textContent = bal > 0 ? '$' + bal.toFixed(2) : '—';
+  balEl.className = 'balance-num' + (bal > 0 && bal < 50 ? ' danger' : '');
+
+  // PnL
+  const pnl = s.pnl || 0;
+  const pnlPct = s.pnl_pct || 0;
+  const pnlEl = document.getElementById('pnlDisplay');
+  if (pnl > 0) {
+    pnlEl.className = 'pnl up';
+    pnlEl.textContent = `▲ +$${pnl.toFixed(2)} (+${pnlPct.toFixed(1)}%)`;
+  } else if (pnl < 0) {
+    pnlEl.className = 'pnl dn';
+    pnlEl.textContent = `▼ -$${Math.abs(pnl).toFixed(2)} (${pnlPct.toFixed(1)}%)`;
+  } else {
+    pnlEl.className = 'pnl';
+    pnlEl.textContent = '$0.00';
+  }
+
+  document.getElementById('lastUpdate').textContent = s.last_update || '';
+  document.getElementById('symbolDisplay').textContent = s.symbol || '—';
+  document.getElementById('priceDisplay').textContent = s.current_price ? '$' + parseFloat(s.current_price).toLocaleString() : '—';
+
+  // Risk bar
+  const risk = Math.min(100, Math.abs(pnlPct) * 5 + (s.leverage || 1) * 3);
+  document.getElementById('riskFill').style.width = Math.max(5, risk) + '%';
+
+  // Stats
+  const total = (s.wins || 0) + (s.losses || 0);
+  document.getElementById('winsDisplay').textContent = s.wins || 0;
+  document.getElementById('lossesDisplay').textContent = s.losses || 0;
+  document.getElementById('wrDisplay').textContent = total > 0 ? Math.round(s.wins/total*100) + '%' : '—';
+
+  // Start button
+  const startBtn = document.getElementById('startBtn');
+  startBtn.textContent = s.running ? 'ÇALIŞIYOR' : 'BAŞLAT';
+  if (s.running) startBtn.classList.add('running');
+  else startBtn.classList.remove('running');
+
+  // Grid levels
+  const levels = s.grid_levels || [];
+  document.getElementById('gridCount').textContent = levels.length + ' emir';
+  if (levels.length > 0) {
+    const sorted = [...levels].sort((a,b) => b.price - a.price);
+    const midPrice = s.current_price || 0;
+    document.getElementById('gridLevels').innerHTML = sorted.map(l => {
+      const isBuy = l.price < midPrice;
+      return `<div class="grid-level">
+        <span class="gl-badge ${isBuy ? 'buy' : 'sell'}">${isBuy ? 'BUY' : 'SELL'}</span>
+        <span class="gl-price">$${parseFloat(l.price).toLocaleString()}</span>
+        <span class="gl-status">#${l.order_id?.toString().slice(-6)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Trades
+  const trades = s.trades || [];
+  if (trades.length !== lastTradeCount) {
+    lastTradeCount = trades.length;
+    if (trades.length > 0) {
+      document.getElementById('tradeList').innerHTML = trades.slice(0,10).map(t => {
+        const isPos = t.pnl >= 0;
+        return `<div class="trade-item">
+          <div class="t-side ${t.side?.toLowerCase() === 'buy' ? 'buy' : 'sell'}">${t.side?.slice(0,1)}</div>
+          <div class="t-info">
+            <div class="t-pair">${t.symbol || s.symbol}</div>
+            <div class="t-meta">${t.time} · $${parseFloat(t.price||0).toLocaleString()} · ${t.qty}</div>
+          </div>
+          <div class="t-pnl">
+            <div class="t-amount ${isPos ? 'pos' : 'neg'}">${isPos?'+':'-'}$${Math.abs(t.pnl||0).toFixed(4)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Logs
+  const logs = s.logs || [];
+  if (logs.length !== lastLogCount) {
+    lastLogCount = logs.length;
+    const body = document.getElementById('logBody');
+    body.innerHTML = logs.slice(-60).map(l =>
+      `<div class="le"><span class="lt">[${l.time}]</span><span class="lm ${l.level}">${l.msg}</span></div>`
+    ).join('');
+    body.scrollTop = body.scrollHeight;
+  }
+}
+
+// ─── POLLING START ────────────────────────────────────────────────────────────
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollState(); // İlk çağrı hemen
+  pollInterval = setInterval(pollState, 3000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  if (SERVER_URL) {
+    document.getElementById('serverUrlDisplay').textContent = SERVER_URL;
+    document.getElementById('serverUrlInput').value = SERVER_URL;
+    startPolling();
+  } else {
+    document.getElementById('connStatus').className = 'conn-status wait';
+    document.getElementById('connText').textContent = 'Kurulum sayfasından sunucu URL gir';
+    goPage('setup');
+    toast('Önce sunucu URL\'ini gir 👆', 'info');
+  }
+});
+</script>
+
+</body>
+</html>
